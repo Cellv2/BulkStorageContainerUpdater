@@ -5,6 +5,7 @@ using Azure.Storage.Blobs.Models;
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.IO.Compression;
 
 // See https://aka.ms/new-console-template for more information
 Console.WriteLine("Hello, World!");
@@ -127,21 +128,31 @@ bool DoesDirectoryExist(string path)
 
 void CreateBackup(string directory)
 {
-
+    try
+    {
+        var zipPath = $"{directory}.zip";
+        ZipFile.CreateFromDirectory(directory, zipPath);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
+    }
 }
 
-void UpdateItemUrlsContentInDirectory(string directory)
+void UpdateItemUrlsContentInDirectory(string directory, string matcher, string replacement)
 {
-    var directoryItems = new List<string>();
-    if (!Directory.Exists(directory))
+    if (!DoesDirectoryExist(directory))
     {
         Console.WriteLine($"{directory} does not exist");
         return;
     }
 
-    foreach (var item in Directory.EnumerateFiles(directory))
+    var directoryItems = Directory.GetDirectories(directory);
+    foreach (var item in directoryItems)
     {
         var itemContents = File.ReadAllText(item);
+        var newContent = itemContents.Replace(matcher, replacement);
+        File.WriteAllText(item, newContent);
     }
 }
 
