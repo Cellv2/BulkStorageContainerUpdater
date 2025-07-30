@@ -115,6 +115,35 @@ async Task DownloadBlobsAsync(BlobClient blobClient, string downloadPath)
     fileStream.Close();
 }
 
+bool DoesDirectoryExist(string path)
+{
+    if (!Directory.Exists(path))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void CreateBackup(string directory)
+{
+
+}
+
+void UpdateItemUrlsContentInDirectory(string directory)
+{
+    var directoryItems = new List<string>();
+    if (!Directory.Exists(directory))
+    {
+        Console.WriteLine($"{directory} does not exist");
+        return;
+    }
+
+    foreach (var item in Directory.EnumerateFiles(directory))
+    {
+        var itemContents = File.ReadAllText(item);
+    }
+}
 
 //var blobServiceClient = new BlobServiceClient(connectionString);
 
