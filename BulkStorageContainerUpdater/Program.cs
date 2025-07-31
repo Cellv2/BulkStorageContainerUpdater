@@ -2,6 +2,7 @@
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using BulkStorageContainerUpdater.Models;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -147,12 +148,19 @@ void UpdateItemUrlsContentInDirectory(string directory, string matcher, string r
         return;
     }
 
-    var directoryItems = Directory.GetDirectories(directory);
-    foreach (var item in directoryItems)
+    try
     {
-        var itemContents = File.ReadAllText(item);
-        var newContent = itemContents.Replace(matcher, replacement);
-        File.WriteAllText(item, newContent);
+        var directoryItems = Directory.GetDirectories(directory);
+        foreach (var item in directoryItems)
+        {
+            var itemContents = File.ReadAllText(item);
+            var newContent = itemContents.Replace(matcher, replacement);
+            File.WriteAllText(item, newContent);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
     }
 }
 
@@ -194,4 +202,3 @@ foreach (var blob in blobsToCopy)
 //    Console.WriteLine(itemName);
 //}
 
-record BlobItemForUpload(string Name, BinaryData Content, bool CreateSubDirWithSameName = false);
