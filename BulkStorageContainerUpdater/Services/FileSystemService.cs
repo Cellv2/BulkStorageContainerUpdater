@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO.Compression;
 
 namespace BulkStorageContainerUpdater.Services;
 
-public sealed  class FileSystemService
+public sealed class FileSystemService : IFileSystemService
 {
     public void CreateBackup(string directory)
     {
@@ -20,6 +15,16 @@ public sealed  class FileSystemService
         {
             Console.WriteLine(ex);
         }
+    }
+
+    bool DoesDirectoryExist(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public void UpdateItemUrlsContentInDirectory(string directory, string matcher, string replacement)

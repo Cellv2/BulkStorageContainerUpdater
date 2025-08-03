@@ -1,168 +1,25 @@
-﻿using Azure;
-using Azure.Storage;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using BulkStorageContainerUpdater.Models;
-using System;
-using System.ComponentModel;
-using System.IO;
-using System.IO.Compression;
+﻿using Azure.Storage.Blobs;
+using BulkStorageContainerUpdater.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 // See https://aka.ms/new-console-template for more information
 Console.WriteLine("Hello, World!");
+
+var services = new ServiceCollection();
+services.AddTransient<IFileSystemService, FileSystemService>();
+services.AddTransient<IAzureBlobService, AzureBlobService>();
+
+var serviceProvider = services.BuildServiceProvider();
+
+var azureBlobService = serviceProvider.GetRequiredService<IAzureBlobService>();
+var fileSystemService = serviceProvider.GetRequiredService<IFileSystemService>();
+
 
 var connectionString = "";
 
 var targetContainerName = "downloadtest";
 
 var downloadDir = "D:\\dev\\blobTest";
-
-BlobItemForUpload[] CreateBlobItemsForUpload(int numToCreate)
-{
-    var rnd = new Random();
-
-    List<BlobItemForUpload> blobItems = new();
-
-
-    for (int i = 0; i < numToCreate; i++)
-    {
-        var parentDirName = rnd.Next(0, 200);
-
-        var guid = Guid.NewGuid().ToString();
-        var name = string.Join("/", [parentDirName, guid]);
-
-        var stringContent = $"id:{guid}";
-        var data = new BinaryData(stringContent);
-
-        var item = new BlobItemForUpload(
-            Name: name,
-            Content: data,
-            CreateSubDirWithSameName: (rnd.NextDouble() >= 0.5)
-        );
-
-        blobItems.Add(item);
-    }
-
-    return blobItems.ToArray();
-}
-
-async Task UploadToBlobStorageAsync(BlobContainerClient blobContainerClient, BlobItemForUpload[] blobsToUpload)
-{
-    foreach (var blobItem in blobsToUpload)
-    {
-        var shouldCreateSubDirs = blobItem.CreateSubDirWithSameName;
-        if (shouldCreateSubDirs)
-        {
-            var childGuid = Guid.NewGuid().ToString();
-            var childName = string.Join("/", [blobItem.Name, childGuid]);
-
-            var childContent = new BinaryData("content");
-
-            await blobContainerClient.UploadBlobAsync(childName, childContent);
-        }
-
-        await blobContainerClient.UploadBlobAsync(blobItem.Name, blobItem.Content);
-    }
-}
-
-async Task<BlobItem[]> GetBlobContainerItemsForDownload(BlobContainerClient containerClient)
-{
-    List<BlobItem> blobItems = [];
-
-    var containerSegments = containerClient.GetBlobsAsync().AsPages(default, 1000);
-
-    await foreach (Page<BlobItem> blobPage in containerSegments)
-    {
-        foreach (BlobItem blobItem in blobPage.Values)
-        {
-            var isSubDirChild = blobItem.Name.Split('/').Length > 2;
-            if (isSubDirChild)
-            {
-                //Console.WriteLine("Blob name looks to be a subdir, skipping : {0}", blobItem.Name);
-                continue;
-            }
-
-            //Console.WriteLine("Blob name: {0}", blobItem.Name);
-
-            blobItems.Add(blobItem);
-        }
-    }
-
-    return blobItems.ToArray();
-}
-
-async Task DownloadBlobsAsync(BlobClient blobClient, string downloadPath)
-{
-    FileStream fileStream = File.OpenWrite(downloadPath);
-
-    var transferOptions = new StorageTransferOptions
-    {
-        // Set the maximum number of parallel transfer workers
-        MaximumConcurrency = 10,
-
-        // Set the initial transfer length to 8 MiB
-        InitialTransferSize = 8 * 1024 * 1024,
-
-        // Set the maximum length of a transfer to 4 MiB
-        MaximumTransferSize = 4 * 1024 * 1024
-    };
-
-    var downloadOptions = new BlobDownloadToOptions()
-    {
-        TransferOptions = transferOptions
-    };
-
-    await blobClient.DownloadToAsync(fileStream, downloadOptions);
-
-    fileStream.Close();
-}
-
-bool DoesDirectoryExist(string path)
-{
-    if (!Directory.Exists(path))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-void CreateBackup(string directory)
-{
-    try
-    {
-        var zipPath = $"{directory}.zip";
-        ZipFile.CreateFromDirectory(directory, zipPath);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine(ex);
-    }
-}
-
-void UpdateItemUrlsContentInDirectory(string directory, string matcher, string replacement)
-{
-    if (!DoesDirectoryExist(directory))
-    {
-        Console.WriteLine($"{directory} does not exist");
-        return;
-    }
-
-    try
-    {
-        var directoryItems = Directory.GetDirectories(directory);
-        foreach (var item in directoryItems)
-        {
-            var itemContents = File.ReadAllText(item);
-            var newContent = itemContents.Replace(matcher, replacement);
-            File.WriteAllText(item, newContent);
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine(ex);
-    }
-}
 
 //var blobServiceClient = new BlobServiceClient(connectionString);
 
@@ -175,7 +32,7 @@ var containerBlobs = containerClient.GetBlobsAsync();
 //var blobsToUpload = CreateBlobItemsForUpload(50);
 //await UploadToBlobStorageAsync(containerClient, blobsToUpload);
 
-var blobsToCopy = await GetBlobContainerItemsForDownload(containerClient);
+var blobsToCopy = await azureBlobService.GetBlobContainerItemsForDownload(containerClient);
 
 //var blobClient = containerClient.GetBlobClient(containerClient.AccountName);
 //await DownloadBlobsAsync(blobClient, downloadDir);
@@ -193,7 +50,7 @@ foreach (var blob in blobsToCopy)
 
     //Console.WriteLine($"Downloading {blob.Name} to {localFilePath}");
 
-    await DownloadBlobsAsync(blobClient, localFilePath);
+    await azureBlobService.DownloadBlobsAsync(blobClient, localFilePath);
 }
 
 //await foreach (BlobItem blobItem in containerBlobs)

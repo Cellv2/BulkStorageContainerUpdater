@@ -3,15 +3,10 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using BulkStorageContainerUpdater.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BulkStorageContainerUpdater.Services;
 
-public sealed class AzureBlobService
+public sealed class AzureBlobService : IAzureBlobService
 {
     public async Task UploadToBlobStorageAsync(BlobContainerClient blobContainerClient, BlobItemForUpload[] blobsToUpload)
     {
