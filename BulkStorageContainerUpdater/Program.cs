@@ -1,6 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using BulkStorageContainerUpdater.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 using Spectre.Console.Cli;
 using System.CommandLine;
 using System.ComponentModel;
@@ -19,7 +20,8 @@ rootCommand.Options.Add(shouldCreateTestBlobItems);
 ParseResult parseResult = rootCommand.Parse(args);
 parseResult.Invoke();
 
-//var app = new CommandApp
+var app = new CommandApp<CommandThing>();
+return app.Run(args);
 
 
 // https://spectreconsole.net/cli/getting-started
@@ -27,7 +29,17 @@ internal sealed class CommandThing : Command<CommandThing.Settings>
 {
     public override int Execute(CommandContext context, Settings settings)
     {
-        throw new NotImplementedException();
+        var shouldCreateTestItems = AnsiConsole.Prompt(
+            new SelectionPrompt<bool>()
+            .Title("Should the tool upload test content to the specified container?")
+            .AddChoices(new[]
+            {
+                false,
+                true
+            })
+        );
+
+        return 0;
     }
 
     public sealed class Settings : CommandSettings
